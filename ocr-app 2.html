@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>ScanBase</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #18181c;
+    --surface2: #222228;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --accent: #e8ff47;
+    --accent-dim: rgba(232,255,71,0.12);
+    --text: #f0f0ee;
+    --muted: #888880;
+    --danger: #ff5c5c;
+    --success: #47ffa0;
+    --font: 'Courier New', monospace;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); overflow-x: hidden; }
+
+  /* HEADER */
+  .header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { font-size: 20px; font-weight: bold; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .db-badge {
+    font-size: 11px; color: var(--muted);
+    border: 1px solid var(--border2); border-radius: 20px;
+    padding: 4px 10px; letter-spacing: 0.5px;
+  }
+  .db-badge b { color: var(--accent); }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky; top: 61px; z-index: 99;
+  }
+  .tab {
+    flex: 1; padding: 12px 0; font-family: var(--font);
+    font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    border-bottom: 2px solid transparent; transition: all 0.2s;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* VIEWS */
+  .view { display: none; padding: 20px; min-height: calc(100vh - 120px); }
+  .view.active { display: block; }
+
+  /* SCAN VIEW */
+  .drop-zone {
+    border: 1.5px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 32px 20px;
+    text-align: center;
+    margin-bottom: 16px;
+    position: relative;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent); background: var(--accent-dim);
+  }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .scan-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.6; }
+  .drop-title { font-size: 15px; margin-bottom: 6px; }
+  .drop-sub { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* CAMERA BTN */
+  .btn-camera {
+    width: 100%; padding: 14px;
+    background: var(--accent); color: #0d0d0f;
+    border: none; border-radius: var(--radius);
+    font-family: var(--font); font-size: 13px; font-weight: bold;
+    letter-spacing: 1px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-bottom: 20px;
+    position: relative;
+    transition: opacity 0.2s;
+  }
+  .btn-camera:active { opacity: 0.85; }
+  .btn-camera input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+
+  /* PREVIEW */
+  .preview-wrap { display: none; margin-bottom: 20px; }
+  .preview-wrap.show { display: block; }
+  .preview-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; margin-bottom: 8px; text-transform: uppercase; }
+  .preview-imgs {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;
+  }
+  .img-box { background: var(--surface); border-radius: 8px; overflow: hidden; }
+  .img-box img, .img-box canvas { width: 100%; display: block; border-radius: 8px; }
+  .img-cap { font-size: 10px; color: var(--muted); text-align: center; padding: 4px 0 6px; letter-spacing: 0.5px; }
+
+  /* PROGRESS */
+  .progress-wrap { margin-bottom: 16px; }
+  .progress-track {
+    height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; margin-bottom: 6px;
+  }
+  .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; border-radius: 2px; }
+  .progress-text { font-size: 11px; color: var(--muted); letter-spacing: 0.5px; }
+
+  /* OCR RESULT */
+  .ocr-result { display: none; }
+  .ocr-result.show { display: block; }
+  .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .result-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .result-conf { font-size: 11px; }
+  .result-text {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 13px; line-height: 1.7;
+    min-height: 100px; max-height: 220px; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-word;
+    margin-bottom: 12px;
+  }
+  .meta-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .meta-input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+    font-family: var(--font); font-size: 12px; color: var(--text);
+    outline: none;
+  }
+  .meta-input:focus { border-color: var(--accent); }
+
+  .btn-save {
+    width: 100%; padding: 14px; border: none; border-radius: var(--radius);
+    background: var(--surface2); border: 1px solid var(--border2);
+    font-family: var(--font); font-size: 12px; letter-spacing: 1px;
+    color: var(--text); cursor: pointer; text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .btn-save:hover { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .btn-save.saved { background: rgba(71,255,160,0.1); border-color: var(--success); color: var(--success); }
+
+  /* DATABASE VIEW */
+  .db-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .db-title { font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  .btn-clear {
+    font-family: var(--font); font-size: 11px; color: var(--danger);
+    background: none; border: 1px solid rgba(255,92,92,0.3); border-radius: 6px;
+    padding: 5px 10px; cursor: pointer; letter-spacing: 0.5px;
+  }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 13px; line-height: 1.8; }
+  .record-list { display: flex; flex-direction: column; gap: 12px; }
+  .record-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .record-card:hover { border-color: var(--border2); }
+  .record-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+  .record-tag {
+    font-size: 10px; padding: 3px 8px; border-radius: 4px;
+    background: var(--accent-dim); color: var(--accent);
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .record-date { font-size: 10px; color: var(--muted); }
+  .record-preview { font-size: 12px; color: var(--muted); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+  .record-conf { font-size: 10px; margin-top: 8px; color: var(--muted); }
+  .conf-bar { display: inline-block; width: 40px; height: 3px; background: var(--surface2); border-radius: 2px; vertical-align: middle; margin-left: 6px; position: relative; overflow: hidden; }
+  .conf-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.85);
+    align-items: flex-end;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); width: 100%;
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px 40px;
+    max-height: 85vh; overflow-y: auto;
+    animation: slideUp 0.25s ease-out;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle { width: 40px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-size: 16px; margin-bottom: 4px; }
+  .modal-date { font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+  .modal-tag { display: inline-block; font-size: 10px; padding: 3px 8px; border-radius: 4px; background: var(--accent-dim); color: var(--accent); margin-bottom: 16px; letter-spacing: 0.5px; }
+  .modal-section-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .modal-text {
+    background: var(--surface2); border-radius: 8px; padding: 12px;
+    font-size: 12px; line-height: 1.7; white-space: pre-wrap;
+    word-break: break-word; margin-bottom: 16px;
+  }
+  .modal-img { width: 100%; border-radius: 8px; margin-bottom: 16px; }
+  .btn-delete {
+    width: 100%; padding: 12px; border-radius: 8px;
+    background: rgba(255,92,92,0.08); border: 1px solid rgba(255,92,92,0.3);
+    font-family: var(--font); font-size: 12px; color: var(--danger);
+    cursor: pointer; letter-spacing: 0.5px;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: var(--surface2); border: 1px solid var(--border2);
+    padding: 10px 20px; border-radius: 30px;
+    font-size: 12px; color: var(--text); z-index: 300;
+    transition: transform 0.3s; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: flex; gap: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 20px; overflow: hidden;
+  }
+  .stat { flex: 1; padding: 12px; text-align: center; border-right: 1px solid var(--border); }
+  .stat:last-child { border-right: none; }
+  .stat-n { font-size: 22px; font-weight: bold; color: var(--accent); display: block; }
+  .stat-l { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+
+  select.meta-input { appearance: none; -webkit-appearance: none; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">SCAN<span>BASE</span></div>
+  <div class="db-badge"><b id="hdr-count">0</b> docs</div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('scan')">[ scanner ]</button>
+  <button class="tab" onclick="switchTab('db')">[ base de données ]</button>
+</div>
+
+<!-- ========== SCAN VIEW ========== -->
+<div class="view active" id="view-scan">
+
+  <div class="drop-zone" id="drop-zone">
+    <input type="file" accept="image/*" id="file-gallery" onchange="handleFile(this.files[0])" />
+    <div class="scan-icon">&#9633;</div>
+    <div class="drop-title">Glisser une image ici</div>
+    <div class="drop-sub">ou sélectionner depuis la galerie<br/>PNG, JPG, WEBP, HEIC</div>
+  </div>
+
+  <button class="btn-camera">
+    <input type="file" accept="image/*" capture="environment" id="file-camera" onchange="handleFile(this.files[0])" />
+    &#9654; PRENDRE UNE PHOTO
+  </button>
+
+  <div class="preview-wrap" id="preview-wrap">
+    <div class="preview-label">Prétraitement</div>
+    <div class="preview-imgs">
+      <div class="img-box">
+        <img id="img-original" src="" alt="original" />
+        <div class="img-cap">ORIGINAL</div>
+      </div>
+      <div class="img-box">
+        <canvas id="canvas-processed"></canvas>
+        <div class="img-cap">TRAITÉ</div>
+      </div>
+    </div>
+
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+      <div class="progress-text" id="progress-text">En attente...</div>
+    </div>
+
+    <div class="ocr-result" id="ocr-result">
+      <div class="result-header">
+        <div class="result-label">Texte extrait</div>
+        <div class="result-conf" id="conf-label"></div>
+      </div>
+      <div class="result-text" id="result-text" contenteditable="true" spellcheck="false"></div>
+
+      <div class="meta-row">
+        <input class="meta-input" type="text" id="meta-title" placeholder="Titre du document..." />
+        <select class="meta-input" id="meta-cat" style="max-width:130px;">
+          <option value="document">Document</option>
+          <option value="facture">Facture</option>
+          <option value="contrat">Contrat</option>
+          <option value="formulaire">Formulaire</option>
+          <option value="photo">Photo</option>
+          <option value="autre">Autre</option>
+        </select>
+      </div>
+
+      <button class="btn-save" id="btn-save" onclick="saveRecord()">
+        SAUVEGARDER DANS LA BASE
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== DB VIEW ========== -->
+<div class="view" id="view-db">
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat"><span class="stat-n" id="stat-total">0</span><span class="stat-l">total</span></div>
+    <div class="stat"><span class="stat-n" id="stat-words">0</span><span class="stat-l">mots</span></div>
+    <div class="stat"><span class="stat-n" id="stat-conf">—</span><span class="stat-l">confiance</span></div>
+  </div>
+
+  <div class="db-header">
+    <div class="db-title">Documents</div>
+    <button class="btn-clear" onclick="clearDB()">Effacer tout</button>
+  </div>
+
+  <div class="record-list" id="record-list">
+    <div class="empty-state" id="empty-state">
+      Aucun document scanné.<br/>Utilisez le scanner pour commencer.
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div id="modal-tag" class="modal-tag"></div>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-date" id="modal-date"></div>
+    <div class="modal-section-label">TEXTE OCR</div>
+    <div class="modal-text" id="modal-text"></div>
+    <div class="modal-section-label">IMAGE</div>
+    <img class="modal-img" id="modal-img" src="" alt="" />
+    <button class="btn-delete" onclick="deleteRecord(currentRecordId)">SUPPRIMER CE DOCUMENT</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// IndexedDB
+// ============================================================
+const DB_NAME = 'scanbase_v1';
+const DB_VERSION = 1;
+const STORE = 'documents';
+let db;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const store = e.target.result.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+      store.createIndex('date', 'date', { unique: false });
+      store.createIndex('category', 'category', { unique: false });
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function saveDoc(doc) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).add(doc);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function getAllDocs() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function deleteDoc(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function clearAllDocs() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).clear();
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ============================================================
+// Image Preprocessing
+// ============================================================
+function preprocessImage(imgEl) {
+  const canvas = document.getElementById('canvas-processed');
+  const ctx = canvas.getContext('2d');
+  const W = imgEl.naturalWidth;
+  const H = imgEl.naturalHeight;
+  const MAX = 1400;
+  let w = W, h = H;
+  if (w > MAX) { h = Math.round(H * MAX / W); w = MAX; }
+  if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+  canvas.width = w; canvas.height = h;
+  ctx.drawImage(imgEl, 0, 0, w, h);
+
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const data = imageData.data;
+
+  // Grayscale
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+    data[i] = data[i+1] = data[i+2] = gray;
+  }
+
+  // Auto-contrast (stretch histogram)
+  let min = 255, max = 0;
+  for (let i = 0; i < data.length; i += 4) { min = Math.min(min, data[i]); max = Math.max(max, data[i]); }
+  const range = max - min || 1;
+  for (let i = 0; i < data.length; i += 4) {
+    const v = Math.round(((data[i] - min) / range) * 255);
+    data[i] = data[i+1] = data[i+2] = v;
+  }
+
+  // Adaptive thresholding (simple local block)
+  const block = 15;
+  const out = new Uint8ClampedArray(data.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0, cnt = 0;
+      for (let dy = -block; dy <= block; dy++) {
+        for (let dx = -block; dx <= block; dx++) {
+          const ny = y + dy, nx = x + dx;
+          if (ny >= 0 && ny < h && nx >= 0 && nx < w) {
+            sum += data[(ny * w + nx) * 4]; cnt++;
+          }
+        }
+      }
+      const avg = sum / cnt;
+      const idx = (y * w + x) * 4;
+      const bw = data[idx] < avg - 10 ? 0 : 255;
+      out[idx] = out[idx+1] = out[idx+2] = bw; out[idx+3] = 255;
+    }
+  }
+  const outData = new ImageData(out, w, h);
+  ctx.putImageData(outData, 0, 0);
+  return canvas.toDataURL('image/png');
+}
+
+// ============================================================
+// OCR
+// ============================================================
+let currentImageData = null;
+let currentProcessed = null;
+let currentConf = 0;
+
+async function handleFile(file) {
+  if (!file) return;
+  document.getElementById('preview-wrap').classList.add('show');
+  document.getElementById('ocr-result').classList.remove('show');
+  setProgress(5, 'Chargement de l\'image...');
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const imgEl = document.getElementById('img-original');
+    imgEl.onload = async () => {
+      setProgress(15, 'Prétraitement (niveaux de gris, contraste, seuillage)...');
+      await tick();
+      currentImageData = e.target.result;
+
+      try {
+        currentProcessed = preprocessImage(imgEl);
+        setProgress(30, 'Initialisation du moteur OCR...');
+        await tick();
+        await runOCR(currentProcessed);
+      } catch (err) {
+        setProgress(0, '&#10007; Erreur : ' + err.message);
+      }
+    };
+    imgEl.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function runOCR(dataUrl) {
+  setProgress(35, 'Analyse OCR en cours...');
+  const { createWorker } = Tesseract;
+  const worker = await createWorker('fra+eng', 1, {
+    logger: m => {
+      if (m.status === 'recognizing text') {
+        const pct = Math.round(35 + m.progress * 60);
+        setProgress(pct, 'Reconnaissance du texte... ' + Math.round(m.progress * 100) + '%');
+      }
+    }
+  });
+
+  const { data } = await worker.recognize(dataUrl);
+  await worker.terminate();
+
+  currentConf = Math.round(data.confidence);
+  setProgress(100, 'Terminé');
+  showResult(data.text, currentConf);
+}
+
+function showResult(text, conf) {
+  document.getElementById('result-text').innerText = text.trim() || '(aucun texte détecté)';
+  const color = conf > 75 ? '#47ffa0' : conf > 45 ? '#e8ff47' : '#ff5c5c';
+  document.getElementById('conf-label').innerHTML =
+    `<span style="color:${color}">&#9632; ${conf}% confiance</span>`;
+  document.getElementById('ocr-result').classList.add('show');
+  const btn = document.getElementById('btn-save');
+  btn.classList.remove('saved');
+  btn.textContent = 'SAUVEGARDER DANS LA BASE';
+}
+
+function setProgress(pct, text) {
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-text').innerHTML = text;
+}
+
+function tick() { return new Promise(r => setTimeout(r, 10)); }
+
+// ============================================================
+// Save
+// ============================================================
+async function saveRecord() {
+  const text = document.getElementById('result-text').innerText.trim();
+  const title = document.getElementById('meta-title').value.trim() || 'Sans titre';
+  const category = document.getElementById('meta-cat').value;
+  if (!text) { showToast('Aucun texte à sauvegarder'); return; }
+
+  const doc = {
+    title, category,
+    text,
+    confidence: currentConf,
+    imageData: currentImageData,
+    processedData: currentProcessed,
+    date: new Date().toISOString(),
+    words: text.split(/\s+/).filter(Boolean).length
+  };
+
+  await saveDoc(doc);
+  const btn = document.getElementById('btn-save');
+  btn.classList.add('saved');
+  btn.textContent = '&#10003; SAUVEGARDÉ';
+  showToast('Document sauvegardé');
+  updateHeaderCount();
+  if (document.getElementById('view-db').classList.contains('active')) renderDB();
+}
+
+// ============================================================
+// DB View
+// ============================================================
+async function renderDB() {
+  const docs = await getAllDocs();
+  const list = document.getElementById('record-list');
+  const empty = document.getElementById('empty-state');
+
+  document.getElementById('stat-total').textContent = docs.length;
+  const totalWords = docs.reduce((a, d) => a + (d.words || 0), 0);
+  document.getElementById('stat-words').textContent = totalWords.toLocaleString('fr');
+  const avgConf = docs.length ? Math.round(docs.reduce((a, d) => a + d.confidence, 0) / docs.length) : '—';
+  document.getElementById('stat-conf').textContent = docs.length ? avgConf + '%' : '—';
+
+  while (list.firstChild !== empty) list.removeChild(list.firstChild);
+
+  if (!docs.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  const reversed = [...docs].reverse();
+  reversed.forEach(doc => {
+    const card = document.createElement('div');
+    card.className = 'record-card';
+    const color = doc.confidence > 75 ? '#47ffa0' : doc.confidence > 45 ? '#e8ff47' : '#ff5c5c';
+    const date = new Date(doc.date).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    card.innerHTML = `
+      <div class="record-top">
+        <span class="record-tag">${doc.category}</span>
+        <span class="record-date">${date}</span>
+      </div>
+      <div style="font-size:13px;margin-bottom:6px;font-weight:bold;">${escHtml(doc.title)}</div>
+      <div class="record-preview">${escHtml(doc.text)}</div>
+      <div class="record-conf">
+        Confiance : <span style="color:${color}">${doc.confidence}%</span>
+        <span class="conf-bar"><span class="conf-fill" style="width:${doc.confidence}%;background:${color}"></span></span>
+        &nbsp; ${doc.words} mots
+      </div>
+    `;
+    card.onclick = () => openModal(doc);
+    list.insertBefore(card, empty);
+  });
+}
+
+async function clearDB() {
+  if (!confirm('Effacer tous les documents ?')) return;
+  await clearAllDocs();
+  renderDB(); updateHeaderCount();
+  showToast('Base de données vidée');
+}
+
+// ============================================================
+// Modal
+// ============================================================
+let currentRecordId = null;
+function openModal(doc) {
+  currentRecordId = doc.id;
+  const date = new Date(doc.date).toLocaleDateString('fr-FR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  document.getElementById('modal-tag').textContent = doc.category;
+  document.getElementById('modal-title').textContent = doc.title;
+  document.getElementById('modal-date').textContent = date + ' · ' + doc.confidence + '% confiance · ' + doc.words + ' mots';
+  document.getElementById('modal-text').textContent = doc.text;
+  document.getElementById('modal-img').src = doc.imageData || '';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) document.getElementById('modal-overlay').classList.remove('open');
+}
+
+async function deleteRecord(id) {
+  if (!confirm('Supprimer ce document ?')) return;
+  await deleteDoc(id);
+  document.getElementById('modal-overlay').classList.remove('open');
+  renderDB(); updateHeaderCount();
+  showToast('Document supprimé');
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', (i === 0) === (tab === 'scan')));
+  document.getElementById('view-scan').classList.toggle('active', tab === 'scan');
+  document.getElementById('view-db').classList.toggle('active', tab === 'db');
+  if (tab === 'db') renderDB();
+}
+
+async function updateHeaderCount() {
+  const docs = await getAllDocs();
+  document.getElementById('hdr-count').textContent = docs.length;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Drag & drop (desktop)
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
+
+// Init
+openDB().then(() => { updateHeaderCount(); });
+</script>
+</body>
+</html>
