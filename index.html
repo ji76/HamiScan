@@ -5,256 +5,367 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<title>ScanBase</title>
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<title>HamiScan — by Hamiform</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
   :root {
-    --bg: #0d0d0f;
-    --surface: #18181c;
-    --surface2: #222228;
-    --border: rgba(255,255,255,0.08);
-    --border2: rgba(255,255,255,0.15);
-    --accent: #e8ff47;
-    --accent-dim: rgba(232,255,71,0.12);
-    --text: #f0f0ee;
-    --muted: #888880;
-    --danger: #ff5c5c;
-    --success: #47ffa0;
-    --font: 'Courier New', monospace;
-    --radius: 12px;
+    --green-dark:   #1a5c2e;
+    --green:        #2d8a4e;
+    --green-mid:    #3ea865;
+    --green-light:  #d4eddb;
+    --green-pale:   #f0f9f2;
+    --orange:       #e8721c;
+    --orange-light: #fef0e6;
+    --white:        #ffffff;
+    --gray-900:     #1a1f1c;
+    --gray-700:     #3d4840;
+    --gray-500:     #6b7a70;
+    --gray-300:     #b8c8bd;
+    --gray-100:     #edf3ef;
+    --border:       #ccddd3;
+    --shadow:       0 2px 12px rgba(26,92,46,0.10);
+    --shadow-lg:    0 8px 32px rgba(26,92,46,0.14);
+    --radius:       14px;
+    --font:         'Nunito', sans-serif;
   }
+
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); overflow-x: hidden; }
+  html, body { height: 100%; background: var(--gray-100); color: var(--gray-900); font-family: var(--font); overflow-x: hidden; }
 
+  /* HEADER */
   .header {
-    position: sticky; top: 0; z-index: 100;
-    background: var(--bg); border-bottom: 1px solid var(--border);
-    padding: 16px 20px 12px;
+    background: var(--green-dark);
+    padding: 0 20px;
     display: flex; align-items: center; justify-content: space-between;
+    height: 62px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
   }
-  .logo { font-size: 20px; font-weight: bold; letter-spacing: -0.5px; }
-  .logo span { color: var(--accent); }
-  .db-badge { font-size: 11px; color: var(--muted); border: 1px solid var(--border2); border-radius: 20px; padding: 4px 10px; letter-spacing: 0.5px; }
-  .db-badge b { color: var(--accent); }
+  .logo-wrap { display: flex; align-items: center; gap: 10px; }
+  .logo-leaf {
+    width: 34px; height: 34px; background: var(--green-mid);
+    border-radius: 50% 50% 50% 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .logo-text { line-height: 1; }
+  .logo-name { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
+  .logo-by { font-size: 10px; color: rgba(255,255,255,0.55); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+  .db-badge {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px; padding: 5px 12px;
+    font-size: 12px; color: #fff; font-weight: 700;
+  }
+  .db-badge span { color: #a8f0c0; }
 
-  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 61px; z-index: 99; }
-  .tab { flex: 1; padding: 12px 0; font-family: var(--font); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; background: none; border: none; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  /* TABS */
+  .tabs {
+    display: flex; background: var(--white);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 62px; z-index: 99;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .tab {
+    flex: 1; padding: 14px 0; font-family: var(--font);
+    font-size: 13px; font-weight: 700; letter-spacing: 0.3px;
+    background: none; border: none; color: var(--gray-500); cursor: pointer;
+    border-bottom: 3px solid transparent; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .tab.active { color: var(--green); border-bottom-color: var(--green); }
+  .tab-icon { font-size: 15px; }
 
-  .view { display: none; padding: 20px; min-height: calc(100vh - 120px); }
+  /* VIEWS */
+  .view { display: none; padding: 20px; min-height: calc(100vh - 125px); }
   .view.active { display: block; }
 
-  .api-banner { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 14px; margin-bottom: 16px; }
-  .api-banner-title { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+  /* API BANNER */
+  .api-banner {
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .api-banner-title { font-size: 11px; font-weight: 700; color: var(--gray-500); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
   .api-row { display: flex; gap: 8px; }
-  .api-input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: var(--font); font-size: 12px; color: var(--text); outline: none; min-width: 0; }
-  .api-input:focus { border-color: var(--accent); }
-  .btn-api { padding: 10px 14px; background: var(--accent); color: #0d0d0f; border: none; border-radius: 8px; font-family: var(--font); font-size: 11px; font-weight: bold; cursor: pointer; white-space: nowrap; letter-spacing: 0.5px; }
-  .api-ok { font-size: 11px; color: var(--success); margin-top: 6px; display: none; }
+  .api-input { flex: 1; background: var(--gray-100); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 14px; font-family: var(--font); font-size: 13px; color: var(--gray-900); outline: none; min-width: 0; transition: border-color 0.2s; }
+  .api-input:focus { border-color: var(--green); background: var(--white); }
+  .btn-api { padding: 10px 18px; background: var(--green); color: #fff; border: none; border-radius: 10px; font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+  .btn-api:active { background: var(--green-dark); }
+  .api-ok { font-size: 12px; color: var(--green); margin-top: 8px; font-weight: 700; display: none; }
 
-  .steps { display: flex; gap: 6px; margin-bottom: 16px; }
-  .step { flex: 1; height: 3px; border-radius: 2px; background: var(--surface2); transition: background 0.3s; }
-  .step.done { background: var(--accent); }
-  .step.active { background: rgba(232,255,71,0.4); }
+  /* STEPS */
+  .steps-row { display: flex; align-items: center; gap: 4px; margin-bottom: 16px; }
+  .step-pill { flex: 1; height: 4px; border-radius: 2px; background: var(--gray-300); transition: background 0.3s; }
+  .step-pill.done { background: var(--green); }
+  .step-pill.active { background: var(--green-mid); }
 
-  .drop-zone { border: 1.5px dashed var(--border2); border-radius: var(--radius); padding: 32px 20px; text-align: center; margin-bottom: 16px; position: relative; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
-  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: var(--accent-dim); }
+  /* HERO ZONE */
+  .drop-zone {
+    background: var(--white); border: 2px dashed var(--border);
+    border-radius: var(--radius); padding: 36px 20px; text-align: center;
+    margin-bottom: 14px; position: relative; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    box-shadow: var(--shadow);
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--green); background: var(--green-pale); }
   .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-  .scan-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.6; }
-  .drop-title { font-size: 15px; margin-bottom: 6px; }
-  .drop-sub { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .drop-icon {
+    width: 64px; height: 64px; background: var(--green-light); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; margin: 0 auto 14px;
+  }
+  .drop-title { font-size: 16px; font-weight: 800; color: var(--gray-900); margin-bottom: 6px; }
+  .drop-sub { font-size: 13px; color: var(--gray-500); line-height: 1.6; }
 
-  .btn-camera { width: 100%; padding: 14px; background: var(--accent); color: #0d0d0f; border: none; border-radius: var(--radius); font-family: var(--font); font-size: 13px; font-weight: bold; letter-spacing: 1px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 20px; position: relative; transition: opacity 0.2s; }
-  .btn-camera:active { opacity: 0.85; }
+  .btn-camera {
+    width: 100%; padding: 16px; background: var(--green); color: #fff;
+    border: none; border-radius: var(--radius); font-family: var(--font);
+    font-size: 15px; font-weight: 800; cursor: pointer; letter-spacing: 0.3px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-bottom: 20px; position: relative; box-shadow: 0 4px 14px rgba(45,138,78,0.30);
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .btn-camera:active { background: var(--green-dark); box-shadow: none; }
   .btn-camera input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 
-  .preview-wrap { display: none; margin-bottom: 20px; }
+  /* PREVIEW */
+  .preview-wrap { display: none; margin-bottom: 16px; }
   .preview-wrap.show { display: block; }
-  .preview-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; margin-bottom: 8px; text-transform: uppercase; }
-  .preview-imgs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-  .img-box { background: var(--surface); border-radius: 8px; overflow: hidden; }
-  .img-box img, .img-box canvas { width: 100%; display: block; border-radius: 8px; }
-  .img-cap { font-size: 10px; color: var(--muted); text-align: center; padding: 4px 0 6px; letter-spacing: 0.5px; }
+  .section-label { font-size: 11px; font-weight: 700; color: var(--gray-500); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 10px; }
+  .preview-imgs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .img-box { background: var(--white); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); }
+  .img-box img, .img-box canvas { width: 100%; display: block; }
+  .img-cap { font-size: 10px; font-weight: 700; color: var(--gray-500); text-align: center; padding: 6px 0; letter-spacing: 0.5px; text-transform: uppercase; }
 
-  .progress-wrap { margin-bottom: 16px; }
-  .progress-track { height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; margin-bottom: 6px; }
-  .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s ease; border-radius: 2px; }
-  .progress-text { font-size: 11px; color: var(--muted); letter-spacing: 0.5px; }
+  /* PROGRESS */
+  .progress-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .progress-track { height: 6px; background: var(--gray-100); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--green), var(--green-mid)); width: 0%; transition: width 0.4s ease; border-radius: 3px; }
+  .progress-text { font-size: 12px; color: var(--gray-500); font-weight: 600; }
 
-  .ocr-result { display: none; }
-  .ocr-result.show { display: block; }
-  .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .result-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
-  .result-text { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-size: 13px; line-height: 1.7; min-height: 100px; max-height: 240px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; margin-bottom: 12px; outline: none; }
-  .result-text:focus { border-color: var(--accent); }
-  .meta-row { display: flex; gap: 8px; margin-bottom: 16px; }
-  .meta-input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: var(--font); font-size: 12px; color: var(--text); outline: none; }
-  .meta-input:focus { border-color: var(--accent); }
+  /* RESULT */
+  .result-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow); display: none; }
+  .result-card.show { display: block; }
+  .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .word-badge { background: var(--green-light); color: var(--green-dark); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+  .result-text { background: var(--gray-100); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px; font-size: 13px; line-height: 1.8; min-height: 100px; max-height: 220px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; outline: none; font-family: var(--font); color: var(--gray-900); }
+  .result-text:focus { border-color: var(--green); background: var(--white); }
+
+  /* META */
+  .meta-row { display: flex; gap: 8px; margin: 12px 0 14px; }
+  .meta-input { flex: 1; background: var(--gray-100); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 14px; font-family: var(--font); font-size: 13px; color: var(--gray-900); outline: none; transition: border-color 0.2s; }
+  .meta-input:focus { border-color: var(--green); background: var(--white); }
   select.meta-input { appearance: none; -webkit-appearance: none; cursor: pointer; }
 
-  .btn-save { width: 100%; padding: 14px; border: none; border-radius: var(--radius); background: var(--surface2); border: 1px solid var(--border2); font-family: var(--font); font-size: 12px; letter-spacing: 1px; color: var(--text); cursor: pointer; text-transform: uppercase; transition: all 0.2s; }
-  .btn-save:hover { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-  .btn-save.saved { background: rgba(71,255,160,0.1); border-color: var(--success); color: var(--success); }
+  .btn-save { width: 100%; padding: 15px; border: 2px solid var(--green); border-radius: var(--radius); background: var(--white); font-family: var(--font); font-size: 14px; font-weight: 800; color: var(--green); cursor: pointer; transition: all 0.2s; letter-spacing: 0.3px; }
+  .btn-save:hover { background: var(--green); color: #fff; }
+  .btn-save.saved { background: var(--green-light); border-color: var(--green); color: var(--green-dark); }
 
-  .stats-bar { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 20px; overflow: hidden; }
-  .stat { flex: 1; padding: 12px; text-align: center; border-right: 1px solid var(--border); }
-  .stat:last-child { border-right: none; }
-  .stat-n { font-size: 22px; font-weight: bold; color: var(--accent); display: block; }
-  .stat-l { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
-  .db-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .db-title { font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
-  .btn-clear { font-family: var(--font); font-size: 11px; color: var(--danger); background: none; border: 1px solid rgba(255,92,92,0.3); border-radius: 6px; padding: 5px 10px; cursor: pointer; letter-spacing: 0.5px; }
-  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 13px; line-height: 1.8; }
-  .record-list { display: flex; flex-direction: column; gap: 12px; }
-  .record-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; cursor: pointer; transition: border-color 0.2s; }
-  .record-card:hover { border-color: var(--border2); }
-  .record-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
-  .record-tag { font-size: 10px; padding: 3px 8px; border-radius: 4px; background: var(--accent-dim); color: var(--accent); letter-spacing: 0.5px; text-transform: uppercase; }
-  .record-date { font-size: 10px; color: var(--muted); }
-  .record-preview { font-size: 12px; color: var(--muted); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
-  .record-words { font-size: 10px; margin-top: 8px; color: var(--muted); }
-
-  .search-wrap { margin-bottom: 14px; }
-  .search-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: var(--font); font-size: 12px; color: var(--text); outline: none; }
-  .search-input:focus { border-color: var(--accent); }
+  /* DB VIEW */
+  .stats-bar { display: flex; gap: 10px; margin-bottom: 18px; }
+  .stat-card { flex: 1; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 10px; text-align: center; box-shadow: var(--shadow); }
+  .stat-n { font-size: 26px; font-weight: 800; color: var(--green); display: block; line-height: 1; margin-bottom: 4px; }
+  .stat-l { font-size: 10px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.6px; }
 
   .export-row { display: flex; gap: 8px; margin-bottom: 14px; }
-  .btn-export { flex: 1; padding: 9px; background: none; border: 1px solid var(--border2); border-radius: 8px; font-family: var(--font); font-size: 11px; color: var(--muted); cursor: pointer; letter-spacing: 0.5px; transition: all 0.2s; }
-  .btn-export:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .btn-export { flex: 1; padding: 10px; background: var(--white); border: 1.5px solid var(--border); border-radius: 10px; font-family: var(--font); font-size: 12px; font-weight: 700; color: var(--gray-500); cursor: pointer; transition: all 0.2s; }
+  .btn-export:hover { border-color: var(--green); color: var(--green); background: var(--green-pale); }
 
-  .modal-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.85); align-items: flex-end; }
+  .search-wrap { margin-bottom: 14px; position: relative; }
+  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--gray-300); }
+  .search-input { width: 100%; background: var(--white); border: 1.5px solid var(--border); border-radius: 10px; padding: 11px 14px 11px 36px; font-family: var(--font); font-size: 13px; color: var(--gray-900); outline: none; box-shadow: var(--shadow); transition: border-color 0.2s; }
+  .search-input:focus { border-color: var(--green); }
+
+  .db-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .db-title { font-size: 12px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.8px; }
+  .btn-clear { font-family: var(--font); font-size: 12px; font-weight: 700; color: #c0392b; background: none; border: 1.5px solid rgba(192,57,43,0.25); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--gray-300); font-size: 14px; font-weight: 600; line-height: 1.8; }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; display: block; }
+  .record-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .record-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; box-shadow: var(--shadow); transition: box-shadow 0.2s, border-color 0.2s; }
+  .record-card:hover { box-shadow: var(--shadow-lg); border-color: var(--green-mid); }
+  .record-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+  .record-tag { font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 20px; background: var(--green-light); color: var(--green-dark); letter-spacing: 0.5px; text-transform: uppercase; }
+  .record-date { font-size: 10px; font-weight: 600; color: var(--gray-300); }
+  .record-title { font-size: 14px; font-weight: 800; color: var(--gray-900); margin-bottom: 6px; }
+  .record-preview { font-size: 12px; color: var(--gray-500); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .record-footer { margin-top: 10px; display: flex; align-items: center; gap: 8px; }
+  .record-words { font-size: 11px; font-weight: 700; color: var(--gray-300); }
+  .chevron { font-size: 12px; color: var(--gray-300); margin-left: auto; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(26,31,28,0.6); align-items: flex-end; }
   .modal-overlay.open { display: flex; }
-  .modal { background: var(--surface); width: 100%; border-radius: 20px 20px 0 0; padding: 24px 20px 40px; max-height: 88vh; overflow-y: auto; animation: slideUp 0.25s ease-out; }
+  .modal { background: var(--white); width: 100%; border-radius: 24px 24px 0 0; padding: 20px 20px 48px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.28s cubic-bezier(0.32,0.72,0,1); }
   @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-  .modal-handle { width: 40px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 20px; }
-  .modal-tag { display: inline-block; font-size: 10px; padding: 3px 8px; border-radius: 4px; background: var(--accent-dim); color: var(--accent); margin-bottom: 10px; letter-spacing: 0.5px; }
-  .modal-title { font-size: 16px; margin-bottom: 4px; }
-  .modal-date { font-size: 11px; color: var(--muted); margin-bottom: 16px; }
-  .modal-section-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
-  .modal-text { background: var(--surface2); border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; margin-bottom: 16px; max-height: 250px; overflow-y: auto; }
-  .modal-img { width: 100%; border-radius: 8px; margin-bottom: 16px; }
-  .btn-delete { width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,92,92,0.08); border: 1px solid rgba(255,92,92,0.3); font-family: var(--font); font-size: 12px; color: var(--danger); cursor: pointer; letter-spacing: 0.5px; }
+  .modal-handle { width: 44px; height: 5px; background: var(--gray-300); border-radius: 3px; margin: 0 auto 20px; }
+  .modal-tag { display: inline-block; font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 20px; background: var(--green-light); color: var(--green-dark); margin-bottom: 10px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 4px; color: var(--gray-900); }
+  .modal-date { font-size: 12px; color: var(--gray-500); font-weight: 600; margin-bottom: 18px; }
+  .modal-section-label { font-size: 11px; font-weight: 700; color: var(--gray-500); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 8px; }
+  .modal-text { background: var(--gray-100); border-radius: 10px; padding: 14px; font-size: 13px; line-height: 1.8; white-space: pre-wrap; word-break: break-word; margin-bottom: 18px; max-height: 240px; overflow-y: auto; font-family: var(--font); }
+  .modal-img { width: 100%; border-radius: 12px; margin-bottom: 18px; border: 1px solid var(--border); }
+  .btn-delete { width: 100%; padding: 14px; border-radius: 12px; background: #fff0ef; border: 1.5px solid rgba(192,57,43,0.25); font-family: var(--font); font-size: 13px; font-weight: 700; color: #c0392b; cursor: pointer; }
 
-  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--surface2); border: 1px solid var(--border2); padding: 10px 20px; border-radius: 30px; font-size: 12px; color: var(--text); z-index: 300; transition: transform 0.3s; white-space: nowrap; }
+  /* TOAST */
+  .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--green-dark); color: #fff; padding: 11px 22px; border-radius: 30px; font-size: 13px; font-weight: 700; z-index: 300; transition: transform 0.3s; white-space: nowrap; box-shadow: 0 4px 20px rgba(26,92,46,0.35); }
   .toast.show { transform: translateX(-50%) translateY(0); }
 
-  .pulse { animation: pulse 1.5s ease-in-out infinite; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .spin { display: inline-block; animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
 </style>
 </head>
 <body>
 
+<!-- HEADER -->
 <div class="header">
-  <div class="logo">SCAN<span>BASE</span></div>
-  <div class="db-badge"><b id="hdr-count">0</b> docs</div>
+  <div class="logo-wrap">
+    <div class="logo-leaf">🌿</div>
+    <div class="logo-text">
+      <div class="logo-name">HamiScan</div>
+      <div class="logo-by">by Hamiform</div>
+    </div>
+  </div>
+  <div class="db-badge"><span id="hdr-count">0</span> doc</div>
 </div>
 
+<!-- TABS -->
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('scan')">[ scanner ]</button>
-  <button class="tab" onclick="switchTab('db')">[ base de données ]</button>
+  <button class="tab active" onclick="switchTab('scan')">
+    <span class="tab-icon">📷</span> Scanner
+  </button>
+  <button class="tab" onclick="switchTab('db')">
+    <span class="tab-icon">📂</span> Documents
+  </button>
 </div>
 
+<!-- SCAN VIEW -->
 <div class="view active" id="view-scan">
 
-  <div class="api-banner" id="api-banner">
-    <div class="api-banner-title">&#9670; Clé API Anthropic</div>
+  <div class="api-banner">
+    <div class="api-banner-title">🔑 Clé API Anthropic</div>
     <div class="api-row">
       <input class="api-input" type="password" id="api-key-input" placeholder="sk-ant-..." autocomplete="off" />
-      <button class="btn-api" onclick="saveApiKey()">OK</button>
+      <button class="btn-api" onclick="saveApiKey()">Valider</button>
     </div>
-    <div class="api-ok" id="api-ok">&#10003; Clé enregistrée</div>
+    <div class="api-ok" id="api-ok">✓ Clé enregistrée</div>
   </div>
 
-  <div class="steps">
-    <div class="step" id="step1"></div>
-    <div class="step" id="step2"></div>
-    <div class="step" id="step3"></div>
+  <div class="steps-row">
+    <div class="step-pill" id="step1"></div>
+    <div class="step-pill" id="step2"></div>
+    <div class="step-pill" id="step3"></div>
   </div>
 
   <div class="drop-zone" id="drop-zone">
-    <input type="file" accept="image/*" id="file-gallery" onchange="handleFile(this.files[0])" />
-    <div class="scan-icon">&#9633;</div>
+    <input type="file" accept="image/*" onchange="handleFile(this.files[0])" />
+    <div class="drop-icon">🖼️</div>
     <div class="drop-title">Glisser une image ici</div>
-    <div class="drop-sub">ou sélectionner depuis la galerie<br/>PNG &middot; JPG &middot; WEBP &middot; HEIC</div>
+    <div class="drop-sub">ou sélectionner depuis la galerie<br/>PNG · JPG · WEBP · HEIC</div>
   </div>
 
   <button class="btn-camera">
-    <input type="file" accept="image/*" capture="environment" id="file-camera" onchange="handleFile(this.files[0])" />
-    &#9654; PRENDRE UNE PHOTO
+    <input type="file" accept="image/*" capture="environment" onchange="handleFile(this.files[0])" />
+    📷 Prendre une photo
   </button>
 
   <div class="preview-wrap" id="preview-wrap">
-    <div class="preview-label">Prétraitement de l'image</div>
+    <div class="section-label">Prétraitement de l'image</div>
     <div class="preview-imgs">
       <div class="img-box">
         <img id="img-original" src="" alt="original" />
-        <div class="img-cap">ORIGINAL</div>
+        <div class="img-cap">Original</div>
       </div>
       <div class="img-box">
         <canvas id="canvas-processed"></canvas>
-        <div class="img-cap">TRAITÉ</div>
+        <div class="img-cap">Traité</div>
       </div>
     </div>
-    <div class="progress-wrap">
+
+    <div class="progress-card">
       <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
-      <div class="progress-text" id="progress-text">—</div>
+      <div class="progress-text" id="progress-text">En attente…</div>
     </div>
-    <div class="ocr-result" id="ocr-result">
+
+    <div class="result-card" id="ocr-result">
       <div class="result-header">
-        <div class="result-label">Texte extrait (éditable)</div>
-        <div id="word-count" style="font-size:11px;color:var(--muted);"></div>
+        <div class="section-label" style="margin-bottom:0">Texte extrait</div>
+        <div class="word-badge" id="word-count">0 mot</div>
       </div>
+      <div class="divider"></div>
       <div class="result-text" id="result-text" contenteditable="true" spellcheck="false" oninput="updateWordCount()"></div>
+
       <div class="meta-row">
-        <input class="meta-input" type="text" id="meta-title" placeholder="Titre..." />
+        <input class="meta-input" type="text" id="meta-title" placeholder="Nom du document…" />
         <select class="meta-input" id="meta-cat" style="max-width:130px;">
           <option value="document">Document</option>
           <option value="facture">Facture</option>
           <option value="contrat">Contrat</option>
           <option value="formulaire">Formulaire</option>
+          <option value="bon-livraison">Bon de livraison</option>
+          <option value="etiquette">Étiquette</option>
           <option value="note">Note</option>
-          <option value="photo">Photo</option>
           <option value="autre">Autre</option>
         </select>
       </div>
-      <button class="btn-save" id="btn-save" onclick="saveRecord()">SAUVEGARDER DANS LA BASE</button>
+
+      <button class="btn-save" id="btn-save" onclick="saveRecord()">
+        💾 Sauvegarder dans la base
+      </button>
     </div>
   </div>
 </div>
 
+<!-- DB VIEW -->
 <div class="view" id="view-db">
   <div class="stats-bar">
-    <div class="stat"><span class="stat-n" id="stat-total">0</span><span class="stat-l">docs</span></div>
-    <div class="stat"><span class="stat-n" id="stat-words">0</span><span class="stat-l">mots</span></div>
-    <div class="stat"><span class="stat-n" id="stat-cats">0</span><span class="stat-l">catégories</span></div>
+    <div class="stat-card"><span class="stat-n" id="stat-total">0</span><span class="stat-l">Documents</span></div>
+    <div class="stat-card"><span class="stat-n" id="stat-words">0</span><span class="stat-l">Mots</span></div>
+    <div class="stat-card"><span class="stat-n" id="stat-cats">0</span><span class="stat-l">Catégories</span></div>
   </div>
+
   <div class="export-row">
-    <button class="btn-export" onclick="exportJSON()">&#8659; JSON</button>
-    <button class="btn-export" onclick="exportCSV()">&#8659; CSV</button>
+    <button class="btn-export" onclick="exportJSON()">⬇ Export JSON</button>
+    <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
   </div>
+
   <div class="search-wrap">
-    <input class="search-input" type="text" id="search-input" placeholder="Rechercher dans les documents..." oninput="renderDB()" />
+    <span class="search-icon">🔍</span>
+    <input class="search-input" type="text" id="search-input" placeholder="Rechercher un document…" oninput="renderDB()" />
   </div>
+
   <div class="db-header">
-    <div class="db-title">Documents</div>
-    <button class="btn-clear" onclick="clearDB()">Effacer tout</button>
+    <div class="db-title">Tous les documents</div>
+    <button class="btn-clear" onclick="clearDB()">Tout effacer</button>
   </div>
+
   <div class="record-list" id="record-list">
-    <div class="empty-state" id="empty-state">Aucun document.<br/>Scannez une image pour commencer.</div>
+    <div class="empty-state" id="empty-state">
+      <span class="empty-icon">🌿</span>
+      Aucun document pour l'instant.<br/>Scannez une image pour commencer.
+    </div>
   </div>
 </div>
 
+<!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
   <div class="modal">
     <div class="modal-handle"></div>
     <div id="modal-tag" class="modal-tag"></div>
     <div class="modal-title" id="modal-title"></div>
     <div class="modal-date" id="modal-date"></div>
-    <div class="modal-section-label">TEXTE OCR</div>
+    <div class="modal-section-label">Texte extrait</div>
     <div class="modal-text" id="modal-text"></div>
-    <div class="modal-section-label">IMAGE ORIGINALE</div>
+    <div class="modal-section-label">Image originale</div>
     <img class="modal-img" id="modal-img" src="" alt="" />
-    <button class="btn-delete" onclick="deleteRecord(currentRecordId)">&#10005; SUPPRIMER CE DOCUMENT</button>
+    <button class="btn-delete" onclick="deleteRecord(currentRecordId)">🗑 Supprimer ce document</button>
   </div>
 </div>
 
@@ -264,7 +375,7 @@
 // ============================================================
 // IndexedDB
 // ============================================================
-const DB_NAME = 'scanbase_v2', DB_VER = 1, STORE = 'documents';
+const DB_NAME = 'hamiscan_v1', DB_VER = 1, STORE = 'documents';
 let db;
 
 function openDB() {
@@ -279,25 +390,25 @@ function openDB() {
     r.onerror = () => rej(r.error);
   });
 }
-function txStore(mode) { return db.transaction(STORE, mode).objectStore(STORE); }
-function dbSave(doc) { return new Promise((res,rej) => { const r=txStore('readwrite').add(doc); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
-function dbAll()      { return new Promise((res,rej) => { const r=txStore('readonly').getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
-function dbDel(id)    { return new Promise((res,rej) => { const r=txStore('readwrite').delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
-function dbClear()    { return new Promise((res,rej) => { const r=txStore('readwrite').clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+function txStore(m) { return db.transaction(STORE, m).objectStore(STORE); }
+function dbSave(d) { return new Promise((res,rej)=>{ const r=txStore('readwrite').add(d); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function dbAll()   { return new Promise((res,rej)=>{ const r=txStore('readonly').getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function dbDel(id) { return new Promise((res,rej)=>{ const r=txStore('readwrite').delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+function dbClear() { return new Promise((res,rej)=>{ const r=txStore('readwrite').clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
 
 // ============================================================
 // API KEY
 // ============================================================
 let apiKey = '';
-try { apiKey = localStorage.getItem('sb_api_key') || ''; } catch(e) {}
+try { apiKey = localStorage.getItem('hami_api_key') || ''; } catch(e) {}
 
 function saveApiKey() {
   const val = document.getElementById('api-key-input').value.trim();
-  if (!val.startsWith('sk-ant-')) { showToast('Clé invalide (doit commencer par sk-ant-)'); return; }
+  if (!val.startsWith('sk-ant-')) { showToast('Clé invalide — doit commencer par sk-ant-'); return; }
   apiKey = val;
-  try { localStorage.setItem('sb_api_key', val); } catch(e) {}
+  try { localStorage.setItem('hami_api_key', val); } catch(e) {}
   document.getElementById('api-ok').style.display = 'block';
-  showToast('Clé API enregistrée');
+  showToast('✓ Clé API enregistrée');
 }
 
 function initApiUI() {
@@ -308,7 +419,7 @@ function initApiUI() {
 }
 
 // ============================================================
-// Image Preprocessing (Canvas — SDK téléphone)
+// Prétraitement (Canvas API — SDK mobile)
 // ============================================================
 function preprocessImage(imgEl) {
   const canvas = document.getElementById('canvas-processed');
@@ -324,7 +435,7 @@ function preprocessImage(imgEl) {
   const d = imgData.data;
   const gray = new Float32Array(w * h);
 
-  // 1. Niveaux de gris (luminance)
+  // 1. Niveaux de gris
   for (let i = 0; i < d.length; i += 4) {
     gray[i >> 2] = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
   }
@@ -335,7 +446,7 @@ function preprocessImage(imgEl) {
   const rng = mx - mn || 1;
   for (let i = 0; i < gray.length; i++) gray[i] = (gray[i] - mn) / rng * 255;
 
-  // 3. Netteté (filtre laplacien 3x3)
+  // 3. Filtre de netteté (laplacien 3x3)
   const sharp = new Float32Array(gray.length);
   const kern = [0, -1, 0, -1, 5, -1, 0, -1, 0];
   for (let y = 0; y < h; y++) {
@@ -343,19 +454,19 @@ function preprocessImage(imgEl) {
       let s = 0;
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
-          const ny = y + dy, nx = x + dx;
-          const src = (ny >= 0 && ny < h && nx >= 0 && nx < w) ? gray[ny * w + nx] : gray[y * w + x];
-          s += kern[(dy + 1) * 3 + (dx + 1)] * src;
+          const ny = y+dy, nx = x+dx;
+          const src = (ny>=0 && ny<h && nx>=0 && nx<w) ? gray[ny*w+nx] : gray[y*w+x];
+          s += kern[(dy+1)*3+(dx+1)] * src;
         }
       }
-      sharp[y * w + x] = Math.min(255, Math.max(0, s));
+      sharp[y*w+x] = Math.min(255, Math.max(0, s));
     }
   }
 
   // 4. Écriture
   for (let i = 0; i < sharp.length; i++) {
     const v = Math.round(sharp[i]);
-    d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; d[i * 4 + 3] = 255;
+    d[i*4] = d[i*4+1] = d[i*4+2] = v; d[i*4+3] = 255;
   }
   ctx.putImageData(imgData, 0, 0);
   return canvas.toDataURL('image/jpeg', 0.92);
@@ -372,7 +483,7 @@ async function handleFile(file) {
   if (!apiKey) { showToast('Entrez votre clé API d\'abord'); return; }
 
   setStep(1);
-  setProgress(5, 'Lecture du fichier...');
+  setProgress(5, 'Lecture du fichier…');
   document.getElementById('preview-wrap').classList.add('show');
   document.getElementById('ocr-result').classList.remove('show');
 
@@ -381,16 +492,16 @@ async function handleFile(file) {
     currentImageData = e.target.result;
     const img = document.getElementById('img-original');
     img.onload = async () => {
-      setProgress(20, 'Prétraitement : niveaux de gris · contraste · netteté...');
+      setProgress(20, 'Prétraitement : niveaux de gris · contraste · netteté…');
       await tick();
       setStep(2);
       try {
         currentProcessed = preprocessImage(img);
-        setProgress(45, 'Envoi à Claude Vision...');
+        setProgress(45, 'Envoi à Claude Vision…');
         await tick();
         await runClaudeOCR(currentProcessed);
       } catch (err) {
-        setProgress(0, '&#10007; ' + err.message);
+        setProgress(0, '❌ ' + err.message);
         console.error(err);
       }
     };
@@ -400,8 +511,7 @@ async function handleFile(file) {
 }
 
 async function runClaudeOCR(dataUrl) {
-  setProgress(55, '<span class="pulse">Analyse OCR en cours (Claude Vision)...</span>');
-
+  setProgress(55, '🌿 Analyse OCR par Claude Vision…');
   const [header, b64] = dataUrl.split(',');
   const mediaType = header.match(/:(.*?);/)[1];
 
@@ -422,13 +532,13 @@ async function runClaudeOCR(dataUrl) {
           { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
           {
             type: 'text',
-            text: `Tu es un moteur OCR précis. Extrais TOUT le texte visible dans cette image en respectant exactement :
+            text: `Tu es un moteur OCR précis utilisé par Hamiform, entreprise agro-bretonne spécialisée dans la nutrition animale. Extrais TOUT le texte visible dans cette image en respectant exactement :
 - La structure et mise en page (retours à la ligne, paragraphes, colonnes, tableaux)
 - L'orthographe exacte telle qu'elle apparaît, même si incorrecte
-- Les chiffres, dates, montants, codes — avec précision maximale
+- Les chiffres, références produits, codes EAN, dates, montants — avec précision maximale
 - Les caractères spéciaux et ponctuations
 
-Réponds UNIQUEMENT avec le texte extrait, sans aucun commentaire ni balise. Si aucun texte n'est visible, réponds exactement : [Aucun texte détecté]`
+Réponds UNIQUEMENT avec le texte extrait, sans commentaire ni balise. Si aucun texte n'est visible, réponds exactement : [Aucun texte détecté]`
           }
         ]
       }]
@@ -443,24 +553,23 @@ Réponds UNIQUEMENT avec le texte extrait, sans aucun commentaire ni balise. Si 
   const data = await resp.json();
   const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
 
-  setProgress(100, '&#10003; Extraction terminée');
+  setProgress(100, '✓ Extraction terminée');
   setStep(3);
   showResult(text);
 }
 
 function showResult(text) {
-  const el = document.getElementById('result-text');
-  el.innerText = text;
+  document.getElementById('result-text').innerText = text;
   document.getElementById('ocr-result').classList.add('show');
   const btn = document.getElementById('btn-save');
   btn.classList.remove('saved');
-  btn.textContent = 'SAUVEGARDER DANS LA BASE';
+  btn.innerHTML = '💾 Sauvegarder dans la base';
   updateWordCount();
 }
 
 function updateWordCount() {
   const words = document.getElementById('result-text').innerText.trim().split(/\s+/).filter(Boolean).length;
-  document.getElementById('word-count').textContent = words + ' mots';
+  document.getElementById('word-count').textContent = words + ' mot' + (words > 1 ? 's' : '');
 }
 
 function setProgress(pct, html) {
@@ -471,14 +580,14 @@ function setProgress(pct, html) {
 function setStep(n) {
   for (let i = 1; i <= 3; i++) {
     const s = document.getElementById('step' + i);
-    s.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+    s.className = 'step-pill' + (i < n ? ' done' : i === n ? ' active' : '');
   }
 }
 
 function tick() { return new Promise(r => setTimeout(r, 20)); }
 
 // ============================================================
-// Sauvegarde dans IndexedDB
+// Sauvegarde
 // ============================================================
 async function saveRecord() {
   const text = document.getElementById('result-text').innerText.trim();
@@ -496,13 +605,13 @@ async function saveRecord() {
 
   const btn = document.getElementById('btn-save');
   btn.classList.add('saved');
-  btn.textContent = '\u2713 SAUVEGARDÉ';
-  showToast('Document sauvegardé');
+  btn.innerHTML = '✓ Sauvegardé avec succès';
+  showToast('✓ Document sauvegardé');
   updateHeaderCount();
 }
 
 // ============================================================
-// Vue Base de Données
+// Vue Documents
 // ============================================================
 async function renderDB() {
   const allDocs = await dbAll();
@@ -521,7 +630,8 @@ async function renderDB() {
 
   if (!docs.length) {
     empty.style.display = 'block';
-    empty.textContent = q ? 'Aucun résultat pour "' + q + '".' : 'Aucun document.\nScannez une image pour commencer.';
+    empty.innerHTML = '<span class="empty-icon">' + (q ? '🔍' : '🌿') + '</span>' +
+      (q ? 'Aucun résultat pour "' + esc(q) + '".' : 'Aucun document pour l\'instant.<br/>Scannez une image pour commencer.');
     return;
   }
   empty.style.display = 'none';
@@ -533,13 +643,13 @@ async function renderDB() {
     let preview = doc.text;
     if (q) {
       const idx = preview.toLowerCase().indexOf(q);
-      if (idx > -1) preview = '...' + preview.slice(Math.max(0, idx - 30), idx + 80) + '...';
+      if (idx > -1) preview = '…' + preview.slice(Math.max(0, idx - 30), idx + 80) + '…';
     }
     card.innerHTML =
       '<div class="record-top"><span class="record-tag">' + esc(doc.category) + '</span><span class="record-date">' + date + '</span></div>' +
-      '<div style="font-size:13px;margin-bottom:6px;font-weight:bold;">' + esc(doc.title) + '</div>' +
+      '<div class="record-title">' + esc(doc.title) + '</div>' +
       '<div class="record-preview">' + esc(preview) + '</div>' +
-      '<div class="record-words">' + doc.words + ' mots</div>';
+      '<div class="record-footer"><span class="record-words">' + doc.words + ' mot' + (doc.words > 1 ? 's' : '') + '</span><span class="chevron">›</span></div>';
     card.onclick = () => openModal(doc);
     list.insertBefore(card, empty);
   });
@@ -547,10 +657,7 @@ async function renderDB() {
 
 async function clearDB() {
   if (!confirm('Effacer tous les documents ?')) return;
-  await dbClear();
-  renderDB();
-  updateHeaderCount();
-  showToast('Base vidée');
+  await dbClear(); renderDB(); updateHeaderCount(); showToast('Base vidée');
 }
 
 // ============================================================
@@ -559,22 +666,21 @@ async function clearDB() {
 async function exportJSON() {
   const docs = await dbAll();
   const clean = docs.map(({ id, title, category, text, date, words }) => ({ id, title, category, text, date, words }));
-  download(JSON.stringify(clean, null, 2), 'scanbase.json', 'application/json');
+  download(JSON.stringify(clean, null, 2), 'hamiscan.json', 'application/json');
   showToast('Export JSON téléchargé');
 }
 
 async function exportCSV() {
   const docs = await dbAll();
   const rows = docs.map(d => [d.id, csvEsc(d.title), csvEsc(d.category), d.words, d.date, csvEsc(d.text)].join(','));
-  download('id,titre,categorie,mots,date,texte\n' + rows.join('\n'), 'scanbase.csv', 'text/csv');
+  download('id,titre,categorie,mots,date,texte\n' + rows.join('\n'), 'hamiscan.csv', 'text/csv');
   showToast('Export CSV téléchargé');
 }
 
 function download(content, filename, type) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([content], { type }));
-  a.download = filename;
-  a.click();
+  a.download = filename; a.click();
 }
 
 function csvEsc(s) { return '"' + String(s).replace(/"/g, '""') + '"'; }
@@ -605,9 +711,7 @@ async function deleteRecord(id) {
   if (!confirm('Supprimer ce document ?')) return;
   await dbDel(id);
   document.getElementById('modal-overlay').classList.remove('open');
-  renderDB();
-  updateHeaderCount();
-  showToast('Document supprimé');
+  renderDB(); updateHeaderCount(); showToast('Document supprimé');
 }
 
 // ============================================================
@@ -622,19 +726,19 @@ function switchTab(tab) {
 
 async function updateHeaderCount() {
   const docs = await dbAll();
-  document.getElementById('hdr-count').textContent = docs.length;
+  const n = docs.length;
+  document.getElementById('hdr-count').textContent = n + ' doc' + (n > 1 ? 's' : '');
 }
 
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
 }
 
-function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-// Drag & drop (desktop)
+// Drag & drop desktop
 const dz = document.getElementById('drop-zone');
 dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
 dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
