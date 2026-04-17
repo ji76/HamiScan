@@ -393,25 +393,17 @@ function dbDel(id) { return new Promise((res,rej)=>{ const r=txStore('readwrite'
 function dbClear() { return new Promise((res,rej)=>{ const r=txStore('readwrite').clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
 
 // ============================================================
-// API KEY
+// PROXY URL — remplacer par l'URL de votre Cloudflare Worker
 // ============================================================
-let apiKey = '';
-try { apiKey = localStorage.getItem('hami_api_key') || ''; } catch(e) {}
+const PROXY_URL = 'https://hamiscan.louji76.workers.dev/';
 
-function saveApiKey() {
-  const val = document.getElementById('api-key-input').value.trim();
-  if (!val.startsWith('sk-ant-')) { showToast('Clé invalide — doit commencer par sk-ant-'); return; }
-  apiKey = val;
-  try { localStorage.setItem('hami_api_key', val); } catch(e) {}
-  document.getElementById('api-ok').style.display = 'block';
-  showToast('✓ Clé API enregistrée');
-}
+let apiKey = null; // inutilisé — la clé est côté serveur
+
+function saveApiKey() { /* désactivé — proxy Worker actif */ }
 
 function initApiUI() {
-  if (apiKey) {
-    document.getElementById('api-key-input').value = apiKey;
-    document.getElementById('api-ok').style.display = 'block';
-  }
+  const banner = document.getElementById('api-banner');
+  if (banner) banner.style.display = 'none';
 }
 
 // ============================================================
@@ -476,7 +468,7 @@ let currentProcessed = null;
 
 async function handleFile(file) {
   if (!file) return;
-  if (!apiKey) { showToast('Entrez votre clé API d\'abord'); return; }
+  // Clé gérée côté serveur (Cloudflare Worker)
 
   setStep(1);
   setProgress(5, 'Lecture du fichier…');
@@ -507,14 +499,12 @@ async function handleFile(file) {
 }
 
 async function callClaude(mediaType, b64, prompt, maxTokens) {
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+  if (!PROXY_URL || PROXY_URL.includes('VOTRE-WORKER')) {
+    throw new Error('URL du Worker Cloudflare non configurée — voir cloudflare-worker.js');
+  }
+  const resp = await fetch(PROXY_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: maxTokens || 2000,
