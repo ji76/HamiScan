@@ -243,6 +243,11 @@
 
   
 
+  <div id="diag-banner" style="background:#fff8e6;border:1px solid #f0c040;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:none;">
+    <div style="font-size:12px;font-weight:700;color:#a06800;margin-bottom:4px;" id="diag-title">Diagnostic</div>
+    <div style="font-size:12px;color:#7a5000;" id="diag-msg"></div>
+  </div>
+
   <div class="steps-row">
     <div class="step-pill" id="step1"></div>
     <div class="step-pill" id="step2"></div>
@@ -483,30 +488,60 @@ async function handleFile(file) {
   reader.readAsDataURL(file);
 }
 
+async function testWorker() {
+  try {
+    const r = await fetch(PROXY_URL, { method: 'GET' });
+    const d = await r.json();
+    return d;
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
 async function callClaude(mediaType, b64, prompt, maxTokens) {
   if (!PROXY_URL || PROXY_URL.includes('VOTRE-WORKER')) {
-    throw new Error('URL du Worker Cloudflare non configurée — voir cloudflare-worker.js');
+    throw new Error('URL du Worker Cloudflare non configurée');
   }
-  const resp = await fetch(PROXY_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: maxTokens || 2000,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
-          { type: 'text', text: prompt }
-        ]
-      }]
-    })
-  });
+  let resp;
+  try {
+    resp = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: maxTokens || 2000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+  } catch(networkErr) {
+    // Réseau inaccessible — lancer un test de diagnostic
+    const diag = await testWorker().catch(() => ({ error: 'Worker inaccessible' }));
+    const diagBanner = document.getElementById('diag-banner');
+    const diagMsg = document.getElementById('diag-msg');
+    if (diagBanner && diagMsg) {
+      diagBanner.style.display = 'block';
+      if (diag.error) {
+        document.getElementById('diag-title').textContent = '❌ Worker inaccessible';
+        diagMsg.textContent = 'Erreur réseau : ' + diag.error + '. Vérifiez que le Worker est bien déployé sur ' + PROXY_URL;
+      } else if (!diag.api_key_configured) {
+        document.getElementById('diag-title').textContent = '❌ Clé API manquante';
+        diagMsg.textContent = 'Le Worker répond mais ANTHROPIC_API_KEY n\'est pas configurée dans Settings > Variables.';
+      }
+    }
+    throw new Error('Impossible de contacter le Worker : ' + networkErr.message);
+  }
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error?.message || 'Erreur API ' + resp.status);
+    throw new Error(err.error || 'Erreur Worker ' + resp.status);
   }
   const data = await resp.json();
+  if (data.error) throw new Error(data.error);
   return data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
 }
 
@@ -827,7 +862,27 @@ dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
 dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
 
 // Init
-openDB().then(() => { updateHeaderCount(); initApiUI(); });
+openDB().then(async () => {
+  updateHeaderCount();
+  initApiUI();
+  // Test silencieux du Worker au chargement
+  const diag = await testWorker().catch(() => ({ error: 'inaccessible' }));
+  if (diag.error || !diag.api_key_configured) {
+    const b = document.getElementById('diag-banner');
+    const m = document.getElementById('diag-msg');
+    const t = document.getElementById('diag-title');
+    if (b && m) {
+      b.style.display = 'block';
+      if (diag.error) {
+        t.textContent = '❌ Worker inaccessible';
+        m.textContent = 'Impossible de contacter ' + PROXY_URL + ' — vérifiez le déploiement Cloudflare.';
+      } else {
+        t.textContent = '❌ Clé API manquante dans le Worker';
+        m.textContent = 'Aller dans Settings > Variables du Worker et ajouter ANTHROPIC_API_KEY.';
+      }
+    }
+  }
+});
 </script>
 </body>
 </html>
