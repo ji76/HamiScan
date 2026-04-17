@@ -258,7 +258,7 @@
     <input type="file" accept="image/*" onchange="handleFile(this.files[0])" />
     <div class="drop-icon">🖼️</div>
     <div class="drop-title">Glisser une image ici</div>
-    <div class="drop-sub">ou sélectionner depuis la galerie<br/>PNG · JPG · WEBP · HEIC</div>
+    <div class="drop-sub">ou sélectionner depuis la galerie<br/>PNG · JPG · WEBP · HEIC · <b>max 2 Mo</b></div>
   </div>
 
   <button class="btn-camera">
@@ -362,6 +362,53 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ============================================================
+// Cache local images (IndexedDB — stockage sur l'appareil)
+// ============================================================
+const IMG_DB_NAME = 'hamiscan_images', IMG_VER = 1, IMG_STORE = 'images';
+let imgDb;
+function openImgDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(IMG_DB_NAME, IMG_VER);
+    r.onupgradeneeded = e => e.target.result.createObjectStore(IMG_STORE, { keyPath: 'id' });
+    r.onsuccess = e => { imgDb = e.target.result; res(imgDb); };
+    r.onerror = () => rej(r.error);
+  });
+}
+async function imgSave(id, imageData) {
+  if (!imgDb) return;
+  return new Promise((res, rej) => {
+    const tx = imgDb.transaction(IMG_STORE, 'readwrite');
+    const req = tx.objectStore(IMG_STORE).put({ id, imageData });
+    req.onsuccess = () => res(); req.onerror = () => rej(req.error);
+  });
+}
+async function imgGet(id) {
+  if (!imgDb) return null;
+  return new Promise((res) => {
+    const tx = imgDb.transaction(IMG_STORE, 'readonly');
+    const req = tx.objectStore(IMG_STORE).get(id);
+    req.onsuccess = () => res(req.result?.imageData || null);
+    req.onerror = () => res(null);
+  });
+}
+async function imgDel(id) {
+  if (!imgDb) return;
+  return new Promise((res) => {
+    const tx = imgDb.transaction(IMG_STORE, 'readwrite');
+    tx.objectStore(IMG_STORE).delete(id);
+    tx.oncomplete = () => res();
+  });
+}
+async function imgClear() {
+  if (!imgDb) return;
+  return new Promise((res) => {
+    const tx = imgDb.transaction(IMG_STORE, 'readwrite');
+    tx.objectStore(IMG_STORE).clear();
+    tx.oncomplete = () => res();
+  });
+}
+
 // ============================================================
 // API Cloudflare KV (stockage cloud via Worker)
 // ============================================================
@@ -469,6 +516,19 @@ let currentProcessed = null;
 
 async function handleFile(file) {
   if (!file) return;
+
+  // Vérification taille max 2 Mo
+  const MAX_MB = 2;
+  const MAX_BYTES = MAX_MB * 1024 * 1024;
+  if (file.size > MAX_BYTES) {
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    showDiag('❌', 'Image trop lourde (' + sizeMB + ' Mo)',
+      'La taille maximale acceptée est ' + MAX_MB + ' Mo. Compresse l'image avant de l'importer.',
+      'red');
+    showToast('❌ Image trop lourde — max ' + MAX_MB + ' Mo');
+    return;
+  }
+
   // Clé gérée côté serveur (Cloudflare Worker)
 
   setStep(1);
@@ -735,13 +795,16 @@ async function saveRecord() {
   btn.innerHTML = '⏳ Sauvegarde en cours…';
   btn.disabled = true;
   try {
-    await API.save({
+    // Sauvegarde texte → KV cloud
+    const result = await API.save({
       title, category, text,
-      imageData: currentImageData,
-      processedData: currentProcessed,
       date: new Date().toISOString(),
       words: text.split(/\s+/).filter(Boolean).length
     });
+    // Sauvegarde image → IndexedDB local (pas de limite de taille)
+    if (result.id && currentImageData) {
+      await imgSave(result.id, currentImageData);
+    }
     btn.classList.add('saved');
     btn.innerHTML = '✓ Sauvegardé sur le cloud';
     showToast('✓ Document sauvegardé');
@@ -811,7 +874,9 @@ async function renderDB() {
 async function clearDB() {
   if (!confirm('Effacer tous les documents ?')) return;
   try {
-    await API.clear(); renderDB(); updateHeaderCount(); showToast('✓ Base vidée');
+    await API.clear();
+    await imgClear(); // vider cache images local
+    renderDB(); updateHeaderCount(); showToast('✓ Base vidée');
   } catch(e) {
     showToast('❌ Erreur : ' + e.message);
   }
@@ -847,14 +912,18 @@ function csvEsc(s) { return '"' + String(s).replace(/"/g, '""') + '"'; }
 // ============================================================
 let currentRecordId = null;
 
-function openModal(doc) {
+async function openModal(doc) {
   currentRecordId = doc.id;
   const date = new Date(doc.date).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   document.getElementById('modal-tag').textContent = doc.category;
   document.getElementById('modal-title').textContent = doc.title;
   document.getElementById('modal-date').textContent = date + ' · ' + doc.words + ' mots';
   document.getElementById('modal-text').textContent = doc.text;
-  document.getElementById('modal-img').src = doc.imageData || '';
+  // Charger l'image depuis le cache local
+  const localImg = await imgGet(doc.id);
+  const imgEl = document.getElementById('modal-img');
+  imgEl.src = localImg || '';
+  imgEl.style.display = localImg ? 'block' : 'none';
   document.getElementById('modal-overlay').classList.add('open');
 }
 
@@ -868,6 +937,7 @@ async function deleteRecord(id) {
   if (!confirm('Supprimer ce document ?')) return;
   try {
     await API.delete(id);
+    await imgDel(id); // supprimer image locale
     document.getElementById('modal-overlay').classList.remove('open');
     renderDB(); updateHeaderCount(); showToast('✓ Document supprimé');
   } catch(e) {
@@ -907,6 +977,7 @@ dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag
 
 // Init
 (async () => {
+  await openImgDB();
   updateHeaderCount();
   initApiUI();
   // Test Worker au chargement
