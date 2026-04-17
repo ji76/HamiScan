@@ -731,26 +731,43 @@ async function saveRecord() {
   const category = document.getElementById('meta-cat').value;
   if (!text || text === '[Aucun texte détecté]') { showToast('Aucun texte à sauvegarder'); return; }
 
-  await API.save({
-    title, category, text,
-    imageData: currentImageData,
-    processedData: currentProcessed,
-    date: new Date().toISOString(),
-    words: text.split(/\s+/).filter(Boolean).length
-  });
-
   const btn = document.getElementById('btn-save');
-  btn.classList.add('saved');
-  btn.innerHTML = '✓ Sauvegardé sur le cloud';
-  showToast('✓ Sauvegardé sur Cloudflare KV');
-  updateHeaderCount();
+  btn.innerHTML = '⏳ Sauvegarde en cours…';
+  btn.disabled = true;
+  try {
+    await API.save({
+      title, category, text,
+      imageData: currentImageData,
+      processedData: currentProcessed,
+      date: new Date().toISOString(),
+      words: text.split(/\s+/).filter(Boolean).length
+    });
+    btn.classList.add('saved');
+    btn.innerHTML = '✓ Sauvegardé sur le cloud';
+    showToast('✓ Document sauvegardé');
+    updateHeaderCount();
+    if (document.getElementById('view-db').classList.contains('active')) renderDB();
+  } catch(e) {
+    btn.innerHTML = '💾 Sauvegarder dans la base';
+    btn.disabled = false;
+    showToast('❌ Erreur : ' + e.message);
+    showDiag('❌', 'Erreur de sauvegarde', e.message, 'red');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ============================================================
 // Vue Documents
 // ============================================================
 async function renderDB() {
-  const allDocs = await API.list();
+  let allDocs = [];
+  try {
+    allDocs = await API.list();
+  } catch(e) {
+    showDiag('❌', 'Erreur chargement', e.message, 'red');
+    return;
+  }
   const q = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
   const docs = q ? allDocs.filter(d =>
     d.title.toLowerCase().includes(q) || d.text.toLowerCase().includes(q) || d.category.toLowerCase().includes(q)
@@ -793,7 +810,11 @@ async function renderDB() {
 
 async function clearDB() {
   if (!confirm('Effacer tous les documents ?')) return;
-  await API.clear(); renderDB(); updateHeaderCount(); showToast('Base vidée');
+  try {
+    await API.clear(); renderDB(); updateHeaderCount(); showToast('✓ Base vidée');
+  } catch(e) {
+    showToast('❌ Erreur : ' + e.message);
+  }
 }
 
 // ============================================================
@@ -845,9 +866,13 @@ function closeModal(e) {
 
 async function deleteRecord(id) {
   if (!confirm('Supprimer ce document ?')) return;
-  await API.delete(id);
-  document.getElementById('modal-overlay').classList.remove('open');
-  renderDB(); updateHeaderCount(); showToast('Document supprimé');
+  try {
+    await API.delete(id);
+    document.getElementById('modal-overlay').classList.remove('open');
+    renderDB(); updateHeaderCount(); showToast('✓ Document supprimé');
+  } catch(e) {
+    showToast('❌ Erreur suppression : ' + e.message);
+  }
 }
 
 // ============================================================
