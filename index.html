@@ -363,28 +363,35 @@
 
 <script>
 // ============================================================
-// IndexedDB
+// API Netlify Blobs (stockage cloud)
 // ============================================================
-const DB_NAME = 'hamiscan_v1', DB_VER = 1, STORE = 'documents';
-let db;
-
-function openDB() {
-  return new Promise((res, rej) => {
-    const r = indexedDB.open(DB_NAME, DB_VER);
-    r.onupgradeneeded = e => {
-      const s = e.target.result.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
-      s.createIndex('date', 'date');
-      s.createIndex('category', 'category');
-    };
-    r.onsuccess = e => { db = e.target.result; res(db); };
-    r.onerror = () => rej(r.error);
-  });
-}
-function txStore(m) { return db.transaction(STORE, m).objectStore(STORE); }
-function dbSave(d) { return new Promise((res,rej)=>{ const r=txStore('readwrite').add(d); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
-function dbAll()   { return new Promise((res,rej)=>{ const r=txStore('readonly').getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
-function dbDel(id) { return new Promise((res,rej)=>{ const r=txStore('readwrite').delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
-function dbClear() { return new Promise((res,rej)=>{ const r=txStore('readwrite').clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+const API = {
+  async save(doc) {
+    const r = await fetch('/api/docs/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(doc)
+    });
+    if (!r.ok) throw new Error('Erreur sauvegarde : ' + r.status);
+    return r.json();
+  },
+  async list() {
+    const r = await fetch('/api/docs/list');
+    if (!r.ok) throw new Error('Erreur chargement : ' + r.status);
+    const d = await r.json();
+    return d.docs || [];
+  },
+  async delete(id) {
+    const r = await fetch('/api/docs/delete?id=' + id, { method: 'DELETE' });
+    if (!r.ok) throw new Error('Erreur suppression : ' + r.status);
+    return r.json();
+  },
+  async clear() {
+    const r = await fetch('/api/docs/clear', { method: 'DELETE' });
+    if (!r.ok) throw new Error('Erreur vidage : ' + r.status);
+    return r.json();
+  }
+};
 
 // ============================================================
 // PROXY URL — remplacer par l'URL de votre Cloudflare Worker
@@ -720,7 +727,7 @@ async function saveRecord() {
   const category = document.getElementById('meta-cat').value;
   if (!text || text === '[Aucun texte détecté]') { showToast('Aucun texte à sauvegarder'); return; }
 
-  await dbSave({
+  await API.save({
     title, category, text,
     imageData: currentImageData,
     processedData: currentProcessed,
@@ -730,8 +737,8 @@ async function saveRecord() {
 
   const btn = document.getElementById('btn-save');
   btn.classList.add('saved');
-  btn.innerHTML = '✓ Sauvegardé avec succès';
-  showToast('✓ Document sauvegardé');
+  btn.innerHTML = '✓ Sauvegardé sur Netlify';
+  showToast('✓ Document sauvegardé sur Netlify');
   updateHeaderCount();
 }
 
@@ -739,7 +746,7 @@ async function saveRecord() {
 // Vue Documents
 // ============================================================
 async function renderDB() {
-  const allDocs = await dbAll();
+  const allDocs = await API.list();
   const q = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
   const docs = q ? allDocs.filter(d =>
     d.title.toLowerCase().includes(q) || d.text.toLowerCase().includes(q) || d.category.toLowerCase().includes(q)
@@ -782,21 +789,21 @@ async function renderDB() {
 
 async function clearDB() {
   if (!confirm('Effacer tous les documents ?')) return;
-  await dbClear(); renderDB(); updateHeaderCount(); showToast('Base vidée');
+  await API.clear(); renderDB(); updateHeaderCount(); showToast('Base vidée');
 }
 
 // ============================================================
 // Export
 // ============================================================
 async function exportJSON() {
-  const docs = await dbAll();
+  const docs = await API.list();
   const clean = docs.map(({ id, title, category, text, date, words }) => ({ id, title, category, text, date, words }));
   download(JSON.stringify(clean, null, 2), 'hamiscan.json', 'application/json');
   showToast('Export JSON téléchargé');
 }
 
 async function exportCSV() {
-  const docs = await dbAll();
+  const docs = await API.list();
   const rows = docs.map(d => [d.id, csvEsc(d.title), csvEsc(d.category), d.words, d.date, csvEsc(d.text)].join(','));
   download('id,titre,categorie,mots,date,texte\n' + rows.join('\n'), 'hamiscan.csv', 'text/csv');
   showToast('Export CSV téléchargé');
@@ -834,7 +841,7 @@ function closeModal(e) {
 
 async function deleteRecord(id) {
   if (!confirm('Supprimer ce document ?')) return;
-  await dbDel(id);
+  await API.delete(id);
   document.getElementById('modal-overlay').classList.remove('open');
   renderDB(); updateHeaderCount(); showToast('Document supprimé');
 }
@@ -850,7 +857,7 @@ function switchTab(tab) {
 }
 
 async function updateHeaderCount() {
-  const docs = await dbAll();
+  const docs = await API.list();
   const n = docs.length;
   document.getElementById('hdr-count').textContent = n + ' doc' + (n > 1 ? 's' : '');
 }
@@ -870,7 +877,7 @@ dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
 dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
 
 // Init
-openDB().then(async () => {
+(async () => {
   updateHeaderCount();
   initApiUI();
   // Test Worker au chargement
@@ -883,7 +890,7 @@ openDB().then(async () => {
     showDiag('✓', 'Worker connecté', 'HamiScan est prêt — clé API configurée.', 'green');
     setTimeout(() => { const b = document.getElementById('diag-banner'); if(b) b.style.display='none'; }, 3000);
   }
-});
+})();
 </script>
 </body>
 </html>
