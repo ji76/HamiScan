@@ -490,22 +490,33 @@ async function handleFile(file) {
 
 async function testWorker() {
   try {
-    const r = await fetch(PROXY_URL, { method: 'GET' });
+    const r = await fetch(PROXY_URL, { method: 'GET', mode: 'cors' });
     const d = await r.json();
-    return d;
+    return { ok: true, ...d };
   } catch(e) {
-    return { error: e.message };
+    return { ok: false, error: e.message };
   }
 }
 
+function showDiag(icon, title, msg, color) {
+  const b = document.getElementById('diag-banner');
+  const t = document.getElementById('diag-title');
+  const m = document.getElementById('diag-msg');
+  if (!b) return;
+  b.style.display = 'block';
+  b.style.background = color === 'red' ? '#fff0ef' : color === 'green' ? '#f0f9f2' : '#fff8e6';
+  b.style.borderColor = color === 'red' ? '#f5a0a0' : color === 'green' ? '#a8d8b0' : '#f0c040';
+  t.style.color = color === 'red' ? '#a00' : color === 'green' ? '#1a5c2e' : '#a06800';
+  t.textContent = icon + ' ' + title;
+  m.textContent = msg;
+}
+
 async function callClaude(mediaType, b64, prompt, maxTokens) {
-  if (!PROXY_URL || PROXY_URL.includes('VOTRE-WORKER')) {
-    throw new Error('URL du Worker Cloudflare non configurée');
-  }
   let resp;
   try {
     resp = await fetch(PROXY_URL, {
       method: 'POST',
+      mode: 'cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
@@ -519,29 +530,26 @@ async function callClaude(mediaType, b64, prompt, maxTokens) {
         }]
       })
     });
-  } catch(networkErr) {
-    // Réseau inaccessible — lancer un test de diagnostic
-    const diag = await testWorker().catch(() => ({ error: 'Worker inaccessible' }));
-    const diagBanner = document.getElementById('diag-banner');
-    const diagMsg = document.getElementById('diag-msg');
-    if (diagBanner && diagMsg) {
-      diagBanner.style.display = 'block';
-      if (diag.error) {
-        document.getElementById('diag-title').textContent = '❌ Worker inaccessible';
-        diagMsg.textContent = 'Erreur réseau : ' + diag.error + '. Vérifiez que le Worker est bien déployé sur ' + PROXY_URL;
-      } else if (!diag.api_key_configured) {
-        document.getElementById('diag-title').textContent = '❌ Clé API manquante';
-        diagMsg.textContent = 'Le Worker répond mais ANTHROPIC_API_KEY n\'est pas configurée dans Settings > Variables.';
-      }
+  } catch(e) {
+    // Réseau bloqué — test diagnostic GET
+    const diag = await testWorker();
+    if (!diag.ok) {
+      showDiag('❌', 'Worker inaccessible', 'Erreur : ' + e.message + ' | Test GET : ' + diag.error, 'red');
+    } else if (!diag.api_key_configured) {
+      showDiag('❌', 'Clé API manquante', 'Le Worker répond en GET mais ANTHROPIC_API_KEY n\'est pas configurée.', 'red');
+    } else {
+      showDiag('❌', 'Erreur POST', 'GET OK mais POST bloqué. Erreur : ' + e.message + '. Vérifiez les CORS du Worker.', 'red');
     }
-    throw new Error('Impossible de contacter le Worker : ' + networkErr.message);
+    throw new Error(e.message);
   }
   if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error || 'Erreur Worker ' + resp.status);
+    const err = await resp.json().catch(() => ({ error: 'HTTP ' + resp.status }));
+    const msg = err.error || ('Erreur ' + resp.status);
+    showDiag('❌', 'Erreur Worker', msg, 'red');
+    throw new Error(msg);
   }
   const data = await resp.json();
-  if (data.error) throw new Error(data.error);
+  if (data.error) { showDiag('❌', 'Erreur Anthropic', data.error, 'red'); throw new Error(data.error); }
   return data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
 }
 
@@ -865,22 +873,15 @@ dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag
 openDB().then(async () => {
   updateHeaderCount();
   initApiUI();
-  // Test silencieux du Worker au chargement
-  const diag = await testWorker().catch(() => ({ error: 'inaccessible' }));
-  if (diag.error || !diag.api_key_configured) {
-    const b = document.getElementById('diag-banner');
-    const m = document.getElementById('diag-msg');
-    const t = document.getElementById('diag-title');
-    if (b && m) {
-      b.style.display = 'block';
-      if (diag.error) {
-        t.textContent = '❌ Worker inaccessible';
-        m.textContent = 'Impossible de contacter ' + PROXY_URL + ' — vérifiez le déploiement Cloudflare.';
-      } else {
-        t.textContent = '❌ Clé API manquante dans le Worker';
-        m.textContent = 'Aller dans Settings > Variables du Worker et ajouter ANTHROPIC_API_KEY.';
-      }
-    }
+  // Test Worker au chargement
+  const diag = await testWorker();
+  if (!diag.ok) {
+    showDiag('❌', 'Worker inaccessible', 'Impossible de contacter ' + PROXY_URL + ' — erreur : ' + diag.error, 'red');
+  } else if (!diag.api_key_configured) {
+    showDiag('❌', 'Clé API manquante', 'Aller dans Settings > Variables du Worker et ajouter ANTHROPIC_API_KEY.', 'red');
+  } else {
+    showDiag('✓', 'Worker connecté', 'HamiScan est prêt — clé API configurée.', 'green');
+    setTimeout(() => { const b = document.getElementById('diag-banner'); if(b) b.style.display='none'; }, 3000);
   }
 });
 </script>
